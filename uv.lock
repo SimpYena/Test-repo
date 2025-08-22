@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.13"
 
 [[package]]
@@ -406,6 +406,15 @@ wheels = [
 ]
 
 [[package]]
+name = "google-search-results"
+version = "2.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/77/30/b3a6f6a2e00f8153549c2fa345c58ae1ce8e5f3153c2fe0484d444c3abcb/google_search_results-2.4.2.tar.gz", hash = "sha256:603a30ecae2af8e600b22635757a6df275dad4b934f975e67878ccd640b78245", size = 18818, upload-time = "2023-03-10T11:13:09.953Z" }
+
+[[package]]
 name = "googleapis-common-protos"
 version = "1.70.0"
 source = { registry = "https://pypi.org/simple" }
@@ -670,8 +679,10 @@ source = { virtual = "." }
 dependencies = [
     { name = "fastmcp" },
     { name = "google-generativeai" },
+    { name = "google-search-results" },
     { name = "httpx" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "streamlit" },
     { name = "wikipedia-api" },
 ]
@@ -680,8 +691,10 @@ dependencies = [
 requires-dist = [
     { name = "fastmcp", specifier = ">=2.11.3" },
     { name = "google-generativeai", specifier = ">=0.7.0" },
+    { name = "google-search-results", specifier = ">=2.4.2" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "pydantic", specifier = ">=2.11.7" },
+    { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "streamlit", specifier = ">=1.36" },
     { name = "wikipedia-api", specifier = ">=0.8.1" },
 ]

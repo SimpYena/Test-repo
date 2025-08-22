@@ -7,6 +7,9 @@ import streamlit as st
 
 from fastmcp import Client
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Gemini (Google Generative AI)
 try:
     import google.generativeai as genai  # type: ignore
@@ -162,7 +165,7 @@ async def mcp_call(server_src: str, tool: str, args: Dict[str, Any]) -> Any:
 # Streamlit UI
 # -----------------------------
 
-st.set_page_config(page_title="Medical MCP Chatbot", page_icon="💬", layout="centered")
+st.set_page_config(page_title="Simple MCP Chatbot", page_icon="💬", layout="centered")
 
 with st.sidebar:
     st.header("Settings")

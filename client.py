@@ -6,6 +6,9 @@ from typing import Any, Dict, Optional, Tuple
 
 from fastmcp import Client
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Gemini (Google Generative AI)
 try:
     import google.generativeai as genai  # type: ignore

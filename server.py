@@ -2,20 +2,27 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
-import requests
 
 import httpx
 from fastmcp import FastMCP
 
 from wiki_client import WikipediaClient
 
+from serpapi import SerpApiClient as SerpApiSearch
+
+from dotenv import load_dotenv
+load_dotenv()
+
 
 logger = logging.getLogger(__name__)
 
 
+load_dotenv()
+API_KEY = os.getenv("SERPAPI_API_KEY")
+
 
 mcp = FastMCP(
-    name="MedicalMCP-Server",
+    name="Simple-MCP-Server",
     instructions=
     """
     Tools available:
@@ -80,45 +87,85 @@ async def get_weather(location: str, unit: str = "metric") -> str:
     return f"The current weather in {nice_name} is {temp}{temp_suffix} with a wind speed of {wind} {wind_suffix}."
 
 
-@mcp.tool(tags={"public", "search"})
-async def serp_search(query: str, num_results: int = 5) -> List[Dict[str, Any]]:
-    """Search the web using SerpAPI. Requires SERPAPI_API_KEY in the environment."""
-    api_key = os.getenv("SERPAPI_API_KEY")
-    if not api_key:
-        return [{"error": "Missing SERPAPI_API_KEY environment variable"}]
+@mcp.tool(tags={"public", "google_search"})
+async def serp_search(
+    query: str,
+    num_results: int = 10,
+    engine: str = "google_light",
+    location: Optional[str] = None,
+) -> str:
+    """Perform a Google search via SerpAPI and return formatted results.
 
-    url = "https://serpapi.com/search.json"
-    params = {"engine": "google", "q": query, "num": max(1, min(num_results, 10)), "api_key": api_key}
+    Args:
+        query: The search query text.
+        num_results: Number of results to return (mapped to SerpAPI `num`).
+        engine: SerpAPI engine to use (default: "google_light").
+        location: Optional location bias, e.g. "Austin, TX".
+
+    Returns:
+        A formatted string of search results or an error message.
+    """
+
+    if not API_KEY:
+        return "Error: SERPAPI_API_KEY is not set. Configure it in your environment."
+
+    params: Dict[str, Any] = {
+        "api_key": API_KEY,
+        "engine": engine,
+        "q": query,
+        "num": num_results,
+    }
+    if location:
+        params["location"] = location
 
     try:
-        data = await _http_get_json(url, params)
-    except Exception as e:
-        return [{"error": f"SerpAPI request failed: {str(e)}"}]
+        search = SerpApiSearch(params)
+        data = search.get_dict()
 
-    results: List[Dict[str, Any]] = []
-    for item in (data.get("organic_results") or [])[: num_results]:
-        results.append(
-            {
-                "title": item.get("title"),
-                "link": item.get("link"),
-                "snippet": item.get("snippet"),
-                "position": item.get("position"),
-            }
-        )
-    if not results:
-        return [{"error": "No results found."}]
-    return results
+        # Process organic search results if available
+        if "organic_results" in data:
+            formatted_results: List[str] = []
+            for result in data.get("organic_results", []):
+                title = result.get("title", "No title")
+                link = result.get("link", "No link")
+                snippet = result.get("snippet", "No snippet")
+                formatted_results.append(
+                    f"Title: {title}\nLink: {link}\nSnippet: {snippet}\n"
+                )
+            return "\n".join(formatted_results) if formatted_results else "No organic results found"
+        else:
+            return "No organic results found"
+
+    # Handle HTTP-specific errors
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 429:
+            return "Error: Rate limit exceeded. Please try again later."
+        elif e.response.status_code == 401:
+            return "Error: Invalid API key. Please check your SERPAPI_API_KEY."
+        else:
+            return f"Error: {e.response.status_code} - {e.response.text}"
+    # Handle other exceptions (e.g., network issues)
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
 @mcp.tool(tags={"public", "wikipedia"})
-def wiki_search(query: str, limit: int = 10) -> Dict[str, Any]:
-        """Search Wikipedia for articles matching a query."""
-        logger.info(f"Tool: Searching Wikipedia for: {query}")
-        results = wikipedia_client.search(query, limit=limit)
-        return {
-            "query": query,
-            "results": results
-        }
+def wiki_search(query: str, language: str = "en", limit: int = 10) -> Dict[str, Any]:
+    """Search Wikipedia for articles matching a query.
+    Accepts optional language code (e.g., 'en', 'de', 'zh-hans').
+    """
+    logger.info(f"Tool: Searching Wikipedia for: {query} (lang={language})")
+    client = (
+        wikipedia_client
+        if getattr(wikipedia_client, "resolved_language", "en") == language
+        else WikipediaClient(language=language, country=None, enable_cache=False)
+    )
+    results = client.search(query, limit=limit)
+    return {
+        "query": query,
+        "language": language,
+        "results": results,
+    }
 
 
 @mcp.tool(tags={"public", "wikipedia"})
